@@ -45,7 +45,9 @@ With no argument it works on the whole repo, one area at a time. Codex uses `$te
 
 The gate loads on its own. Deleting tests only happens when you ask for a pass or a campaign.
 
-![Thirteen tests get verdicts one group at a time; the one asserting -3501 contradicts the README; a SPEC.md and six rule-named tests remain](assets/demo.gif)
+[![A scalpel opens a repo; thirteen tests get verdicts one group at a time; the one asserting -3501 contradicts the README; a SPEC.md and six rule-named tests remain](assets/demo.gif)](assets/video/testectomy-launch.mp4)
+
+[Watch it with sound](assets/video/testectomy-launch.mp4).
 
 ## For agents
 
@@ -234,7 +236,7 @@ This repo follows its own rule. The script has a [`SPEC.md`](SPEC.md) with five 
 python3 -m unittest discover -s tests
 ```
 
-`assets/render.py` regenerates the logo, banner and GIF from the HTML sources in `assets/` (needs Python Playwright, Chrome and ffmpeg).
+`assets/render.py` regenerates the logo and banner, and `assets/video/render.py` renders the launch video and the GIF from a time-driven HTML timeline in `assets/video/index.html` (needs Python Playwright, Chrome and ffmpeg). Music and sound effects were generated with [ElevenLabs](https://elevenlabs.io).
 
 ## Credits
 

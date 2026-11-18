@@ -89,7 +89,16 @@ Each existing test then gets one verdict:
 | **Fold** | A good input/output example for a `read` rule. Moved into the spec's table, then deleted. |
 | **Delete** | Matches a junk pattern and guards no keep-bar rule. Needs one evidence line: what it could detect, and what proof remains. |
 
-The junk patterns: no assertion, expected value computed by the code under test, restated constants or fixtures, source greps a rename breaks, private helpers already covered at the boundary, mock-call wiring, mocks that implement the behavior they assert, fixtures that supply what the owner should produce, negative controls that pass for an unrelated reason, the same contract replayed at another layer, tests that exist to keep a test-only export alive, unreviewed giant snapshots.
+Junk is sorted by what the test depends on, because a test worth keeping depends only on intended behavior:
+
+| Depends on | Example |
+|---|---|
+| **The past** | A removed feature, flag or old path asserted to stay gone. Agents add these when asked to remove something. |
+| **Nothing** | No assertion, a mock of the unit under test, what the type system or the framework already guarantees. |
+| **The implementation** | Expected value computed by the code under test, restated constants, layout numbers, debug seeds, private call order. |
+| **Another test** | The same contract replayed at another layer with no new failure mode. |
+
+Tests that pass by hiding a flake (fixed sleeps, polling to a deadline, retries, raised timeouts, real network calls) guard real behavior, so they get FIX: await the real signal and fake the network so unexpected requests fail.
 
 When unsure between keep and delete, it keeps the test and says why. Deletion count is not the goal.
 
@@ -242,6 +251,8 @@ The first real campaign ran on a production SwiftUI app (private repo) with 308 
 
 ## Credits
 
+The "what does this test depend on" framing (the past, nothing, the implementation) and the done checklist come from [prune-tests](https://github.com/caldoai/skills/blob/main/skills/prune-tests/SKILL.md) by Caldo (MIT, notice in [LICENSE](LICENSE)). The flake-masking patterns and the shrink-only ratchet come from [landmines](https://github.com/interfere-inc/landmines) by Interfere.
+
 The idea comes from a November 2026 thread: [Luke Parker](https://x.com/LukeParkerDev) deleted every test in his repo and banned them in AGENTS.md, [Lauren Tan](https://x.com/poteto) replied that she likes expect tests, and the replies pointed out what pure deletion loses: nobody can check the invariants anymore, and refactors lose their safety net. `testectomy` is the middle path.
 
 The gate, the junk patterns, the retention rules and campaign mode are adapted from the [`test-audit`](https://github.com/openclaw/openclaw/blob/main/.agents/skills/test-audit/SKILL.md) skill in [OpenClaw](https://github.com/openclaw/openclaw) (MIT, notice in [LICENSE](LICENSE)), which came out of pruning OpenClaw's own test suites.
@@ -249,6 +260,8 @@ The gate, the junk patterns, the retention rules and campaign mode are adapted f
 Expect tests follow Jane Street's [`ppx_expect`](https://github.com/janestreet/ppx_expect). Markdown specs follow the line of [Gauge](https://gauge.org), [Cucumber](https://cucumber.io), [specdown](https://github.com/corca-ai/specdown) and [bddfirst](https://github.com/c-k-x/bddfirst), without requiring any of them.
 
 ## Pairs well with
+
+[landmines](https://github.com/interfere-inc/landmines) enforces part of the gate in TypeScript as Oxlint rules: no test doubles, no fixed sleeps, no retries or raised timeouts, strict network mocking, with per-file allowances that only shrink.
 
 [unslop-ui](https://github.com/felipebasurto/unslop-ui) does the same subtractive pass for interface copy and charts.
 

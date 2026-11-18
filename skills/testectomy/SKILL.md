@@ -60,6 +60,16 @@ add it yet:
 4. **Does it need a production seam** (export, flag, wrapper, injection hook)
    that no production caller needs? Then test at the real boundary instead.
 
+Two requests produce junk by reflex. When asked to remove or move something,
+don't add tests asserting it's gone. When a test is flaky, don't add a sleep,
+a retry or a longer timeout: find the race and await the real signal.
+
+Fixing a test counts as changing it, so the questions above apply: if it
+guards no rule in the area's spec, add the rule (with its source) or flag it as
+an open question. Bite-check every new test and every changed assertion; a
+change that only replaces how the test waits keeps its assertion, so running it
+on the fixed and broken code once is enough.
+
 Then check it against every [junk pattern](#junk-patterns). A match fails the
 gate unless the keep bar names the contract it independently guards. A test
 that would break under a behavior-preserving refactor asserts implementation:
@@ -210,7 +220,7 @@ unless its rows need different verdicts.
 | Verdict | When | Action |
 |---------|------|--------|
 | **KEEP** | Guards a `Check: test` rule at its public boundary, even if it needs a rename or a mock swapped for a fake | Put the rule ID in the test name |
-| **FIX** | Guards a `test` rule, but an assertion can't fail: a negative that passes when only one of several items is missing, a check the production path never reaches | Repair the assertion, then bite-check it |
+| **FIX** | Guards a `test` rule, but an assertion can't fail (a negative that passes when only one of several items is missing, a check the production path never reaches), or it passes only by sleeping, retrying or a raised timeout | Repair the assertion or await the real signal, then bite-check it |
 | **CONVERT** | Guards a `test` rule through many hand-written field asserts, mocks or private calls, or duplicates a stronger suite | Rewrite as one expect test at the boundary, or move its unique assertion into the keeper |
 | **FOLD** | Its input → output pair illustrates a sourced `read` rule well | Move the example into that rule's table, then delete the test |
 | **DELETE** | Matches a [junk pattern](#junk-patterns) and guards no keep-bar rule | Delete |
@@ -274,9 +284,20 @@ Add or replace the testing section with this, adjusted to the repo's commands:
   contract others depend on. Everything else is checked by reading. No tests
   for private helpers, restated constants, or mock call arguments.
 - A bug-fix regression test must fail on the code before the fix.
+- Removing or moving code needs no test that it's gone.
+- No sleeps, retries or raised timeouts in tests. Await the operation or its
+  signal, and fake the network so unexpected requests fail.
 - Behavior changes start in the spec: update the rule, then the code.
 - If code and spec disagree, stop and ask. Don't edit the spec to match the code.
 ```
+
+### Keep it from growing back
+
+If the stack has a linter that can enforce part of the gate, wire it: rules
+against fixed sleeps, retries, raised timeouts and mocks that replace behavior
+exist for several ecosystems (for TypeScript, `landmines`). Adopt them in an
+existing codebase with a per-file allowance of current violations that may
+only shrink, so the count ratchets down instead of blocking the merge.
 
 ### 9. Validate and report
 
@@ -328,8 +349,9 @@ next to the rule.
 
 1. **External boundary**: a provider, API, DB, file format, wire protocol or OS
    behavior that you don't control and that can change underneath the code.
-   Use recorded real responses or a small scripted fake that behaves like the
-   provider (times out, errors, succeeds). Asserting what the code did *to* the
+   Use the real implementation everywhere you can, and fake only at the
+   boundary: recorded real responses, a network-level interceptor, or a small
+   scripted fake that behaves like the provider (times out, errors, succeeds). Asserting what the code did *to* the
    fake is fine when that is the rule ("3 attempts", "never charged twice").
 2. **Costly or irreversible failure**: money, auth and permissions, data
    deletion, migrations, storage, security, privacy.
@@ -354,40 +376,92 @@ Everything else is `read`.
 
 ## Junk patterns
 
-The gate rejects a new test that matches one; a pass deletes an existing one
-unless the keep bar names the contract it guards.
+Ask what the test depends on. A test worth keeping depends on intended
+behavior: it changes only when that behavior changes, and fails only when it
+regresses. The gate rejects a new test that matches a pattern below; a pass
+deletes an existing one unless the keep bar names the contract it guards.
+
+### It depends on the past
+
+It asserts that removed or moved code stays gone. Bringing it back would be a
+decision, not a regression.
+
+- A removed feature, screen, flag, endpoint or dependency is asserted absent.
+- A moved module is asserted missing from its old path, or an old name is
+  asserted not to resolve.
+- A presentation is asserted empty or nil for UI that was removed: delete the
+  test with the dead code path.
+
+Agents write these when asked to remove something ("so it can't come back").
+Removing code never needs a test proving it's gone.
+
+### It depends on nothing
+
+No change to the code under test can make it fail.
 
 - No assertion at all: coverage probes.
-- Expected value produced by the helper, renderer or logic under test.
+- It tests the platform: a button renders, an event fires, a framework or
+  language feature works, getters, setters and constructors behave.
+- It asserts what the type system or the compiler already guarantees.
+- It mocks the unit under test, then asserts what the mock returns; or mocks
+  implement the behavior being asserted; or one identical mock stands in for
+  different APIs.
 - Self-comparisons and identity copies.
+- Negative controls that pass for an unrelated reason: a denial from a
+  different guard, a rejection the production path never reaches.
+- An opt-in harness (screenshots, galleries, renders behind an env flag) that
+  is skipped on every normal run: move it to a script or delete it.
+
+### It depends on the implementation
+
+It changes whenever the code does, even when behavior didn't.
+
+- Expected value produced by the helper, renderer or logic under test.
 - Restates constants, enums, exports, config, defaults, fixtures, manifests or
   inventories verbatim.
+- Asserts layout and motion numbers (point sizes, paddings, opacities, angles,
+  durations) that restate constants, unless the number is a documented
+  accessibility minimum.
+- Asserts the contents of debug-only seeds, preview data, demo fixtures or
+  debug menus that ship to no user.
 - Exact source, import or string greps that a rename breaks.
-- Tests a private function, predicate or call shape the boundary test already
-  covers.
+- Tests a private function, predicate, private state, internal call order or
+  which helper was invoked, when the boundary test already covers the outcome.
 - Asserts that a mock was called with arguments the code under test built,
   when no rule is about that interaction.
-- Mocks that implement the behavior being asserted, or one identical mock
-  standing in for different APIs.
 - Fixtures that supply what the owner should produce (receipts, callback
   ordering, admission), or persistence asserted against a store the real path
   never writes.
 - Capability tests that restate a declared flag instead of exercising what the
   flag promises.
-- Negative controls that pass for an unrelated reason: a denial from a
-  different guard, a rejection the production path never reaches.
-- The same contract asserted again at another layer, or per provider, with no
-  new failure mode.
 - Exists only to keep a test-only export, global or wrapper alive.
-- Getters, setters, constructors, framework behavior, language features.
 - A large snapshot nobody reviews, updated blindly with `-u`.
 - A name or fixture that promises more than the input exercises.
-- Asserts the contents of debug-only seeds, preview data, demo fixtures or
-  debug menus that ship to no user.
-- Asserts layout and motion numbers (point sizes, paddings, opacities, angles,
-  durations) that restate constants, unless the number is a documented
-  accessibility minimum.
-- Asserts a presentation is empty or nil for UI that was removed: delete it with
-  the dead code path.
-- An opt-in harness (screenshots, galleries, renders behind an env flag) that
-  is skipped on every normal run: move it to a script or delete it.
+
+### It duplicates another test
+
+- The same contract asserted again at another layer, or per provider, with no
+  new failure mode. Keep the one at the strongest boundary.
+
+### It passes by hiding a flake
+
+These guard real behavior, so the verdict is FIX, not DELETE. A test that only
+passes on rerun is a bug in the test or the code.
+
+- Waits a fixed real-time delay (sleep, timer) instead of awaiting the
+  operation or a signal it emits.
+- Polls state until a deadline instead of awaiting an event.
+- Retries on failure, or raises its timeout, to get green.
+- Lets unhandled network requests through to the real network, or silently
+  answers them. Fake at the network boundary, and make unexpected requests
+  fail the test.
+
+## Done looks like
+
+- Every test left guards a rule with a named regression, and would fail on that
+  regression and only on it.
+- No test asserts code that no longer exists.
+- No two tests guard the same behavior.
+- No test sleeps, retries or raises a timeout to pass.
+- No production code exists only for tests.
+- Every area has a spec, and `AGENTS.md` tells the next agent how to use it.

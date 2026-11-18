@@ -65,7 +65,7 @@ def mix_audio(cues, total, out):
         src = AUDIO / f"{cue['s']}.mp3"
         inputs += ["-i", str(src)]
         norm = -1.0 - peak_db(src) if cue["s"] != "music" else 0.0
-        gain = cue["g"] * (0.33 if cue["s"] == "music" else 1.0)
+        gain = cue["g"] * (0.3 if cue["s"] == "music" else 1.0)
         delay = int(cue["t"] * 1000)
         chain = f"[{k}:a]volume={norm}dB,volume={gain},adelay={delay}|{delay}"
         if cue["s"] == "music":
@@ -114,7 +114,7 @@ def main():
         )
         ffmpeg(
             "-framerate", str(FPS), "-i", str(frames / "%05d.png"),
-            "-vf", "fps=15,scale=960:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle",
+            "-vf", "fps=12,scale=880:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle",
             str(ASSETS / "demo.gif"),
         )
     print(mp4, ASSETS / "demo.gif")

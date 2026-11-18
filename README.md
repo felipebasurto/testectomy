@@ -45,7 +45,7 @@ With no argument it works on the whole repo, one area at a time. Codex uses `$te
 
 The gate loads on its own. Deleting tests only happens when you ask for a pass or a campaign.
 
-[![A scalpel opens a repo; thirteen tests get verdicts one group at a time; the one asserting -3501 contradicts the README; a SPEC.md and six rule-named tests remain](assets/demo.gif)](assets/video/testectomy-launch.mp4)
+[![How testectomy works in four steps: write down the intent in SPEC.md, keep only tests a reader can't replace, turn code-vs-intent disagreements into known bugs, and prove every kept test can fail](assets/demo.gif)](assets/video/testectomy-launch.mp4)
 
 [Watch it with sound](assets/video/testectomy-launch.mp4).
 

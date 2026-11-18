@@ -1,8 +1,8 @@
 {
   "name": "testectomy",
   "displayName": "Testectomy",
-  "version": "1.0.0",
-  "description": "Cut a test suite down to the tests that matter. Moves intent into SPEC.md files agents read, keeps only tests that guard boundaries, money, concurrency, parsers and real regressions, and turns code-vs-intent disagreements into reported bugs instead of green tests.",
+  "version": "1.1.0",
+  "description": "One skill for tests. Gates every new test at write time, and on request cuts a suite down to the tests that matter: intent moves into SPEC.md files, only boundary, money, concurrency, parser, regression and public-contract tests survive, test-only production seams go, and bugs the green suite was hiding get reported.",
   "author": {
     "name": "Felipe Basurto"
   },
@@ -10,6 +10,13 @@
   "repository": "https://github.com/felipebasurto/testectomy",
   "license": "MIT",
   "logo": "assets/logo.png",
-  "keywords": ["testing", "tests", "test-audit", "specs", "expect-tests", "agents-md"],
+  "keywords": [
+    "testing",
+    "tests",
+    "test-audit",
+    "specs",
+    "expect-tests",
+    "agents-md"
+  ],
   "skills": "./skills/"
 }

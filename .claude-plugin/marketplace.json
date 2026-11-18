@@ -1,6 +1,6 @@
 {
   "name": "testectomy",
-  "description": "Cut a test suite down to the tests that matter",
+  "description": "One skill for tests: gate new ones, cut the rest down to what matters",
   "owner": {
     "name": "Felipe Basurto"
   },
@@ -8,7 +8,7 @@
     {
       "name": "testectomy",
       "source": "./",
-      "description": "Cut a test suite down to the tests that matter. Moves intent into SPEC.md files agents read, keeps only tests that guard boundaries, money, concurrency, parsers and real regressions, and turns code-vs-intent disagreements into reported bugs instead of green tests."
+      "description": "One skill for tests. Gates every new test at write time, and on request cuts a suite down to the tests that matter: intent moves into SPEC.md files, only boundary, money, concurrency, parser, regression and public-contract tests survive, test-only production seams go, and bugs the green suite was hiding get reported."
     }
   ]
 }

@@ -2,7 +2,7 @@
   <img src="assets/banner.png" width="100%" alt="testectomy: 13 tests cut down to 6, one per spec rule, with 2 hidden bugs found">
 </p>
 
-<p align="center">An agent skill that cuts a test suite down to the tests that matter, and moves the rest of the intent into Markdown specs.</p>
+<p align="center">One agent skill for tests: it stops low-value tests at write time, cuts an existing suite down to the tests that matter, and moves the rest of the intent into Markdown specs.</p>
 
 <p align="center">
   <a href="https://github.com/felipebasurto/testectomy/actions/workflows/test.yml"><img src="https://github.com/felipebasurto/testectomy/actions/workflows/test.yml/badge.svg" alt="Tests"></a>
@@ -18,6 +18,7 @@ Deleting all of them throws away the part that is not a copy: intent. "The total
 - **Only tests a reader can't replace survive.** External boundaries, money and security, concurrency and time, parsers, real past regressions, public contracts. One test per rule, named with the rule ID, at the public boundary.
 - **Disagreements become bugs, not green tests.** When the code contradicts clear intent, the test is written from intent and marked as an expected failure, and the report lists it as a bug.
 - **Every kept test is bite-checked.** The agent breaks the code the rule describes and confirms the test fails on an assertion, then reverts.
+- **Test-only production code goes too.** Exports, reset hooks, injection parameters and dead paths that only tests called are deleted with the tests that kept them alive.
 
 ## Quick start
 
@@ -32,7 +33,17 @@ Then, in your agent:
 /testectomy src/billing
 ```
 
-With no argument it works on the whole repo, one area at a time. Codex uses `$testectomy`, the Claude Code plugin uses `/testectomy:testectomy`. It never triggers on its own: deleting tests is your call.
+With no argument it works on the whole repo, one area at a time. Codex uses `$testectomy`, the Claude Code plugin uses `/testectomy:testectomy`.
+
+### Three modes
+
+| Mode | When | What it does |
+|---|---|---|
+| **Gate** | Automatically, whenever the agent writes, changes or reviews a test | Asks which rule the test guards, what regression makes it fail and why existing coverage misses it, and rejects it if it matches a junk pattern. Never deletes anything. |
+| **Pass** | You run `/testectomy [path]` | Specs, a verdict for every test, deletions, gaps filled, bite checks, report |
+| **Campaign** | You ask to prune a whole subsystem in a large repo | The pass split into lanes, with a written ledger per lane, a layer plan, and an independent review that hunts for contracts that lost their only proof ([`CAMPAIGN.md`](skills/testectomy/CAMPAIGN.md)) |
+
+The gate loads on its own. Deleting tests only happens when you ask for a pass or a campaign.
 
 ![Thirteen tests get verdicts one group at a time; the one asserting -3501 contradicts the README; a SPEC.md and six rule-named tests remain](assets/demo.gif)
 
@@ -71,9 +82,12 @@ Each existing test then gets one verdict:
 | Verdict | When |
 |---|---|
 | **Keep** | Guards a `test` rule at its public boundary. Renamed with the rule ID. |
-| **Convert** | Guards a `test` rule through field-by-field asserts, mocks or private calls. Rewritten as one [expect test](skills/testectomy/expect-tests.md). |
+| **Fix** | Guards a rule, but an assertion can't fail (a negative that passes for the wrong reason, a branch production never reaches). Repaired and bite-checked. |
+| **Convert** | Guards a `test` rule through field-by-field asserts, mocks or private calls, or duplicates a stronger suite. Rewritten as one [expect test](skills/testectomy/expect-tests.md) or merged into the keeper. |
 | **Fold** | A good input/output example for a `read` rule. Moved into the spec's table, then deleted. |
-| **Delete** | Restates constants, tests private helpers, asserts mock calls, computes its own expected value, or breaks on renames. |
+| **Delete** | Matches a junk pattern and guards no keep-bar rule. Needs one evidence line: what it could detect, and what proof remains. |
+
+The junk patterns: no assertion, expected value computed by the code under test, restated constants or fixtures, source greps a rename breaks, private helpers already covered at the boundary, mock-call wiring, mocks that implement the behavior they assert, fixtures that supply what the owner should produce, negative controls that pass for an unrelated reason, the same contract replayed at another layer, tests that exist to keep a test-only export alive, unreviewed giant snapshots.
 
 When unsure between keep and delete, it keeps the test and says why. Deletion count is not the goal.
 
@@ -225,6 +239,8 @@ python3 -m unittest discover -s tests
 ## Credits
 
 The idea comes from a November 2026 thread: [Luke Parker](https://x.com/LukeParkerDev) deleted every test in his repo and banned them in AGENTS.md, [Lauren Tan](https://x.com/poteto) replied that she likes expect tests, and the replies pointed out what pure deletion loses: nobody can check the invariants anymore, and refactors lose their safety net. `testectomy` is the middle path.
+
+The gate, the junk patterns, the retention rules and campaign mode are adapted from the [`test-audit`](https://github.com/openclaw/openclaw/blob/main/.agents/skills/test-audit/SKILL.md) skill in [OpenClaw](https://github.com/openclaw/openclaw) (MIT, notice in [LICENSE](LICENSE)), which came out of pruning OpenClaw's own test suites.
 
 Expect tests follow Jane Street's [`ppx_expect`](https://github.com/janestreet/ppx_expect). Markdown specs follow the line of [Gauge](https://gauge.org), [Cucumber](https://cucumber.io), [specdown](https://github.com/corca-ai/specdown) and [bddfirst](https://github.com/c-k-x/bddfirst), without requiring any of them.
 

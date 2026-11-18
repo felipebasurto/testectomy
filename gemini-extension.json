@@ -1,5 +1,5 @@
 {
   "name": "testectomy",
-  "version": "1.0.0",
-  "description": "Cut a test suite down to the tests that matter: SPEC.md files for intent, executable tests only where reading can't replace running."
+  "version": "1.1.0",
+  "description": "One skill for tests: gate new ones at write time, cut the suite down to the ones that matter, move intent into SPEC.md."
 }

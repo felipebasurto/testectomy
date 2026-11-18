@@ -11,11 +11,11 @@ if ! command -v rg >/dev/null 2>&1; then
   exit 1
 fi
 
-case_pattern='^\s*(it|test|it\.each|test\.each|bench)(\.(only|skip|concurrent|todo))?\s*[(`]|^\s*(async\s+)?def\s+test_|^\s*func\s+Test[A-Z_]|#\[(tokio::)?test\]|@Test\b|@pytest\.mark\.parametrize|let%(expect_)?test|^\s*Scenario( Outline)?:'
+case_pattern='^\s*(it|test|it\.each|test\.each|bench)(\.(only|skip|concurrent|todo))?\s*[(`]|^\s*(async\s+)?def\s+test_|^\s*func\s+Test[A-Z_]|^\s*(@\w+\s+)*(override\s+)?func\s+test\w*\s*\(|#\[(tokio::)?test\]|@Test\b|@pytest\.mark\.parametrize|let%(expect_)?test|^\s*Scenario( Outline)?:'
 
 files=$(rg --files \
   -g '*.test.*' -g '*.spec.*' -g '*_test.*' -g 'test_*.py' -g '*_spec.rb' \
-  -g '**/__tests__/**' -g '**/tests/**/*.rs' -g '*Test.java' -g '*Tests.swift' \
+  -g '**/__tests__/**' -g '**/tests/**/*.rs' -g '*Test.java' -g '*Tests.swift' -g '*Test.swift' \
   -g '*Test.kt' -g '*.feature' \
   -g '!**/node_modules/**' -g '!**/vendor/**' -g '!**/dist/**' -g '!**/build/**' \
   -g '!**/*.snap' -g '!**/__snapshots__/**' \

@@ -18,7 +18,7 @@ Check: test (keep bar 5: regression, data files were counted). Test: `tests/test
 
 ### INV-2: Counts cases across the common runners
 `it(`/`test(` (Vitest, Jest, Bun), `def test_` (pytest), `func TestX` (Go),
-`#[test]` (Rust), `@Test` (JUnit), Gherkin `Scenario:`.
+`#[test]` (Rust), `@Test` (JUnit, Swift Testing), `func testX()` (XCTest), Gherkin `Scenario:`.
 Check: test (keep bar 4: one regex over many syntaxes). Test: same
 
 ### INV-3: Always ends with a TOTAL line

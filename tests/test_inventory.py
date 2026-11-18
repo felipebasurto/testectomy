@@ -12,6 +12,7 @@ FIXTURE = {
     "go/cart_test.go": "func TestAdds(t *testing.T) {}\nfunc helper() {}\n",
     "rs/tests/cart.rs": "#[test]\nfn adds() {}\n#[tokio::test]\nasync fn removes() {}\n",
     "java/CartTest.java": "@Test\nvoid adds() {}\n",
+    "ios/CartTests.swift": "final class CartTests: XCTestCase {\n    func testAdds() {}\n    @MainActor func testRemoves() async {}\n    func helper() {}\n}\n",
     "features/cart.feature": "Feature: cart\n  Scenario: adds\n  Scenario Outline: removes\n",
     "data/table_test.pdf": "%PDF",
     "web/tsconfig.test.json": "{}",
@@ -41,13 +42,14 @@ class InventoryTest(unittest.TestCase):
             {
                 "features/cart.feature": 2,
                 "go/cart_test.go": 1,
+                "ios/CartTests.swift": 2,
                 "java/CartTest.java": 1,
                 "py/test_cart.py": 2,
                 "rs/tests/cart.rs": 2,
                 "web/cart.test.ts": 2,
             },
         )
-        self.assertTrue(out.rstrip().splitlines()[-1].startswith("TOTAL: 6 files"))
+        self.assertTrue(out.rstrip().splitlines()[-1].startswith("TOTAL: 7 files"))
 
 
 if __name__ == "__main__":

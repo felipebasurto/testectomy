@@ -1,0 +1,14 @@
+{
+  "name": "testectomy",
+  "description": "Cut a test suite down to the tests that matter",
+  "owner": {
+    "name": "Felipe Basurto"
+  },
+  "plugins": [
+    {
+      "name": "testectomy",
+      "source": "./",
+      "description": "Cut a test suite down to the tests that matter. Moves intent into SPEC.md files agents read, keeps only tests that guard boundaries, money, concurrency, parsers and real regressions, and turns code-vs-intent disagreements into reported bugs instead of green tests."
+    }
+  ]
+}

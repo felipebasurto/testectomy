@@ -1,0 +1,6 @@
+interface:
+  display_name: "Testectomy"
+  short_description: "Cut tests to the essential ones, move intent into SPEC.md"
+  default_prompt: "Run testectomy on this repo"
+policy:
+  allow_implicit_invocation: false

@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>testectomy demo</title>
+<link rel="stylesheet" href="../cards.css">
+<style>
+  body { width: 960px; height: 540px; overflow: hidden; position: relative; }
+
+  #top { position: absolute; left: 40px; right: 40px; top: 28px; display: flex; align-items: center; gap: 12px; }
+  #top img { width: 32px; height: 32px; }
+  #top .cmd { font-family: var(--mono); font-size: 15px; }
+  #top .cmd span { color: var(--muted); }
+
+  #tests { position: absolute; left: 40px; top: 84px; width: 430px; }
+  #tests .card { height: 360px; }
+
+  #right { position: absolute; left: 500px; top: 84px; width: 420px; height: 360px; }
+  #right > .card { position: absolute; inset: 0; opacity: 0; transform: translateY(8px); transition: opacity .35s, transform .35s; }
+  #right > .card.on { opacity: 1; transform: none; }
+  #right .rows { font-size: 13px; line-height: 26px; }
+
+  #caption {
+    position: absolute; left: 40px; right: 40px; bottom: 34px; height: 30px;
+    font-size: 19px; line-height: 30px; color: var(--ink);
+  }
+  #caption b { color: var(--red); font-weight: 600; }
+  #counter { position: absolute; right: 40px; top: 30px; font-family: var(--mono); font-size: 14px; color: var(--muted); }
+  #counter b { color: var(--ink); }
+
+  .readme { font-size: 15px; line-height: 23px; color: var(--muted); }
+  .readme p { margin: 0 0 14px; padding: 4px 8px; margin-left: -8px; border-radius: 8px; transition: background .3s, color .3s; }
+  .readme p.hit { background: var(--red-soft); color: var(--red); font-weight: 500; }
+  #caption code { font-family: var(--mono); font-size: 17px; background: #fff; padding: 4px 10px; border-radius: 8px; box-shadow: 0 1px 2px rgb(26 20 20 / .06); }
+
+  #summary { display: flex; flex-direction: column; justify-content: center; gap: 18px; }
+  #summary .big { font-size: 46px; font-weight: 650; letter-spacing: -.03em; line-height: 1; }
+  #summary .big span { color: var(--muted); font-weight: 500; }
+  #summary .line { font-size: 17px; color: var(--muted); }
+  #summary .line b { color: var(--ink); font-weight: 600; }
+</style>
+</head>
+<body>
+  <div id="top">
+    <img src="../logo.svg" alt="">
+    <div class="cmd">/testectomy <span>tinyshop</span></div>
+  </div>
+  <div id="counter"><b id="count">13</b> tests</div>
+
+  <div id="tests">
+    <div class="card">
+      <div class="card-head"><b>tests/</b><span class="pass" id="status">13 passed</span></div>
+      <ul class="rows" id="rows"></ul>
+    </div>
+  </div>
+
+  <div id="right">
+    <div class="card" id="readme">
+      <div class="card-head"><b>README.md</b><span>intent</span></div>
+      <div class="readme">
+        <p>Prices are in cents. Never use floats for money.</p>
+        <p id="never">If the coupon is worth more than the subtotal, the order is free: the total is 0, never negative.</p>
+        <p>Shipping is 499 cents, free from 5000 cents.</p>
+        <p>If the provider times out, retry up to 2 more times. Never charge twice for the same order id.</p>
+      </div>
+    </div>
+    <div class="card" id="spec">
+      <div class="card-head"><b>tinyshop/SPEC.md</b><span>from README</span></div>
+      <div class="spec">
+        <div class="rule"><span class="id">PRICE-3</span><span>Total is never negative</span><span class="check">test</span></div>
+        <div class="rule"><span class="id">PRICE-4</span><span>Free shipping from 5000</span><span class="check">test</span></div>
+        <div class="rule"><span class="id">PRICE-1</span><span>Money is integer cents</span><span class="check">read</span></div>
+        <div class="rule"><span class="id">PAY-1</span><span>Timeouts retry twice</span><span class="check">test</span></div>
+        <div class="rule"><span class="id">PAY-2</span><span>Never charge twice</span><span class="check">test</span></div>
+        <div class="rule"><span class="id">PAY-3</span><span>…even concurrently</span><span class="check">test</span></div>
+        <div class="rule"><span class="id">PAY-4</span><span>Returns the receipt</span><span class="check">test</span></div>
+        <br>
+        <div class="h">Open questions</div>
+        <div class="q">Coupon equal to subtotal: 0 or 499?</div>
+        <div class="q">Is the provider idempotent?</div>
+      </div>
+    </div>
+    <div class="card" id="after">
+      <div class="card-head"><b>tests/</b><span><span class="pass">4 passed</span>, 2 xfail</span></div>
+      <ul class="rows">
+        <li class="xfail"><span class="dot"></span><span class="name">test_PRICE_3_never_negative</span><span class="tag">BUG</span></li>
+        <li><span class="dot"></span><span class="name">test_PRICE_4_free_shipping</span></li>
+        <li><span class="dot"></span><span class="name">test_PAY_1_retry_twice</span></li>
+        <li><span class="dot"></span><span class="name">test_PAY_2_never_twice</span></li>
+        <li class="xfail"><span class="dot"></span><span class="name">test_PAY_3_concurrent</span><span class="tag">BUG</span></li>
+        <li><span class="dot"></span><span class="name">test_PAY_4_receipt</span></li>
+      </ul>
+    </div>
+    <div class="card" id="summary">
+      <div class="big">13 <span>→</span> 6 tests</div>
+      <div class="line"><b>2 bugs found</b> that the green suite was hiding</div>
+      <div class="line"><b>Every kept test bite-checked:</b> break the code, watch it fail</div>
+      <div class="line"><b>Intent lives in SPEC.md</b>, not in a second copy of the logic</div>
+    </div>
+  </div>
+
+  <div id="caption"></div>
+
+<script>
+  const TESTS = [
+    ["test_shipping_constant", "const"],
+    ["test_threshold_constant", "const"],
+    ["test_subtotal_helper", "private"],
+    ["test_shipping_helper_below", "private"],
+    ["test_shipping_helper_above", "private"],
+    ["test_total_calls_helpers", "mock"],
+    ["test_total_with_coupon", "self"],
+    ["test_total_big_coupon", "bug"],
+    ["test_free_shipping_at_threshold", "keep"],
+    ["test_charge_calls_provider", "mock"],
+    ["test_charge_returns_receipt", "keep"],
+    ["test_retries_then_fails", "keep"],
+    ["test_payment_failed_is_exception", "const"],
+  ];
+  const TAGS = { const: "restates code", private: "private helper", mock: "mock wiring", self: "expects own output", bug: "== -3501", keep: "→ spec rule" };
+
+  const STEPS = [
+    { cut: [], right: "readme", caption: "13 tests, all green. Which ones would catch a real bug?" },
+    { cut: ["const"], right: "readme", caption: "Tests that restate constants: <b>cut</b>" },
+    { cut: ["const", "private"], right: "readme", caption: "Private helpers already covered at the boundary: <b>cut</b>" },
+    { cut: ["const", "private", "mock"], right: "readme", caption: "Asserting mocks were called with what the code built: <b>cut</b>" },
+    { cut: ["const", "private", "mock", "self"], right: "readme", caption: "Expected value computed by the code under test: <b>cut</b>" },
+    { cut: ["const", "private", "mock", "self"], bug: true, right: "readme", caption: "README says “never negative”. This test asserts <b>−3501</b>." },
+    { cut: ["const", "private", "mock", "self"], bug: true, keep: true, right: "spec", caption: "Intent goes into SPEC.md, written from the README, not the code" },
+    { cut: ["const", "private", "mock", "self"], bug: true, keep: true, right: "after", count: 6, caption: "One test per rule worth running. Bugs become expected failures." },
+    { cut: ["const", "private", "mock", "self"], bug: true, keep: true, right: "summary", count: 6, caption: "<code>npx skills add felipebasurto/testectomy</code>" },
+  ];
+
+  const rows = document.getElementById("rows");
+  rows.innerHTML = TESTS.map(([name]) => `<li><span class="dot"></span><span class="name">${name}</span><span class="tag"></span></li>`).join("");
+
+  function render(step) {
+    const s = STEPS[step];
+    [...rows.children].forEach((li, i) => {
+      const kind = TESTS[i][1];
+      const cut = s.cut.includes(kind);
+      const bug = kind === "bug" && s.bug;
+      const keep = kind === "keep" && s.keep;
+      li.className = cut ? "cut" : bug ? "bug" : keep ? "keep" : "";
+      li.querySelector(".tag").textContent = cut || bug || keep ? TAGS[kind] : "";
+    });
+    for (const id of ["readme", "spec", "after", "summary"]) document.getElementById(id).classList.toggle("on", s.right === id);
+    document.getElementById("count").textContent = s.count ?? 13;
+    document.getElementById("never").classList.toggle("hit", !!s.bug);
+    document.getElementById("status").textContent = s.count ? "9 cut, 4 rewritten" : "13 passed";
+    document.getElementById("caption").innerHTML = s.caption;
+  }
+  render(0);
+</script>
+</body>
+</html>

@@ -1,5 +1,9 @@
 # SPEC.md format
 
+If the repo already uses an executable spec format (Gherkin, Gauge, specdown),
+write the rules there and keep the same fields: a stable ID, one observable
+rule, the `Check:` level and the `Source:`. Otherwise use the Markdown below.
+
 One file per area, next to the code it governs. Short enough to read in full
 before every change to that area. Past ~150 lines, split the area.
 
@@ -30,6 +34,10 @@ Source: #412
 ### BILL-2: Currency is the order's currency, never the user's locale
 Check: read
 Source: README#pricing
+
+### BILL-5: An invoice line always has a quantity of at least 1
+Check: type (`Quantity` can't be built from 0 or a negative number)
+Source: README#invoices
 
 ### BILL-3: Line items round half-even to 2 decimals per line, then sum
 Check: test (keep bar 3: floating point). Test: `billing.test.ts › BILL-3`

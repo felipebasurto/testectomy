@@ -3,19 +3,20 @@
 A campaign prunes one subsystem's whole test surface in one PR: a plugin, an
 integration, or one core area of a large repo. Everything in
 [SKILL.md](SKILL.md) applies to every lane: ground rules, keep bar, verdicts,
-junk patterns, bite check, validation. This file adds the order of work and
-the lessons of real campaigns. Each step ends on its completion criterion;
-don't start the next one early.
+junk patterns, bite check, validation. This file adds the order of work. Each
+step ends on its completion criterion; don't start the next one early.
 
-Steps: 1 Baseline, 2 Lanes, 3 Ledger per lane, 4 Layer plan per lane,
+Steps: 1 Baseline, 2 Lanes, 3 Ledger per chunk, 4 Layer plan per lane,
 5 Cutover, 6 Preservation review, 7 Product defects, 8 Reconcile and hand off.
 
 ## 1. Baseline
 
-Pin a default-branch SHA. Record the subsystem's test, test-support and
-production line counts, and every in-scope test file's pass/fail state. Keep
-baseline failures in their own list: in one messaging-integration campaign,
-all three baseline failures were real delivery bugs, not stale tests.
+Pin a default-branch SHA. Run the baseline checks in SKILL.md step 1 (case
+count, build and run time, skipped tests). Record the subsystem's test,
+test-support and production line counts, and every in-scope test file's
+pass/fail state. Keep
+baseline failures in their own list: they are often real bugs, not stale
+tests.
 
 Done when every in-scope test file has a recorded baseline result.
 
@@ -46,7 +47,11 @@ Write one brief file all auditors read, with file paths, not pasted plans:
 - the evidence rules from SKILL.md (named regression, sourced rule IDs, UNREAD
   instead of guessing);
 - signals specific to the repo (its debug seeds, its naming habits);
-- the ledger shape, and a final report under 15 lines.
+- the ledger shape: one table per chunk with File, Test, Verdict, Rule or keep
+  bar, Evidence, one row per test declaration, then sections for draft spec
+  rules, suspected bugs, test-only seams, keep-on-purpose and open questions;
+- the auditor's final message: counts per verdict and anything unclear, under
+  15 lines (the full report comes from the parent at hand-off).
 
 Each auditor reads every assigned test in full, including parameter tables,
 plus the production owners, entry points, callers, history and CI routing, and
@@ -108,19 +113,17 @@ builds once after both passes.
 
 When moving a test, it carries everything it depends on: its `setUp` and
 `tearDown` (or the equivalent fixtures), and the original helpers copied as
-they are. Agents tend to rewrite helpers from memory and drop cleanup; in one
-campaign that produced a helper that crashed on a date it couldn't parse, and
-three moved tests that leaked state (a debug locale, pending deep links) into
-every test after them. After pass B, check each moved test's original class
-for setup and teardown and confirm the target has the same.
+they are. Agents tend to rewrite helpers from memory and drop cleanup, which
+leaks state into every test that runs after the moved one. After pass B, check
+each moved test's original class for setup and teardown and confirm the target
+has the same.
 
 When collapsing tests into one table test, keep exactly the original cases.
-New rows are new tests and need a sourced rule; an agent once added time-zone
-rows whose expected values came from nowhere, and they failed.
+New rows are new tests and need a sourced rule.
 
 After both passes, the parent builds and fixes compile errors in a loop with a
-build-only command that reports every error (`build-for-testing`, `tsc
---noEmit`, `cargo check`), before running any tests. Expect leftovers:
+build-only command that reports every error (for example `xcodebuild
+build-for-testing`, `tsc --noEmit`, `cargo check`), before running any tests. Expect leftovers:
 attributes and annotations orphaned by deleted functions, helpers missing in
 the target, helpers declared on the wrong type.
 
@@ -138,8 +141,7 @@ Done when every lane plan is applied and each lane's keepers pass.
 Before claiming completion, have independent reviewers compare deleted coverage
 against the keepers, one reviewer per boundary group. They look for rules that
 lost their only proof, and for new assertions that can't fail, such as a
-rejection row the production code never reaches. One review of this kind found
-nine real gaps and one unreachable assertion.
+rejection row the production code never reaches.
 
 For each restored rule, bite-check it: one deliberate mutation of the
 production owner turns the keeper red, then restore the source byte for byte.

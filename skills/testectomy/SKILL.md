@@ -106,6 +106,11 @@ boundary test). If they still want it, write it: it's their repo.
   production owner, its entry point, callers, sibling implementations,
   overlapping tests, CI routing and relevant history. When a test claims
   dependency-backed behavior, read the dependency's source or types.
+- **Use git history as evidence.** A test that changed in most commits that
+  touched its owner, while the behavior didn't change, depends on the
+  implementation. A test that never changed while its owner was rewritten may
+  assert nothing. A test added in the same commit that removed or renamed
+  something often asserts the past.
 - **Judge a test by its assertions, not its name.** A test named "clears the
   window" may assert the window was *not* cleared. Files named after a plan
   phase, PR, audit or fix batch (`Phase7`, `Leftover`, `Fixes`) often hold real
@@ -121,6 +126,11 @@ boundary test). If they still want it, write it: it's their repo.
   behavior.
 
 ## Pass workflow
+
+Before starting, tell the user what a pass produces and ask which parts they
+want: pruning (always), area specs, and the test policy in `AGENTS.md`. With
+pruning only, skip steps 4 and 8, record each rule and its source in the
+ledger instead of a spec, and classify against the keep bar directly.
 
 Copy this checklist and track it:
 
@@ -240,8 +250,14 @@ Test names carry the rule ID in a form the runner accepts and can filter on:
 When unsure between KEEP and DELETE, keep it and list it in the report with the
 reason. Deletion count is not the goal.
 
+A test you haven't read in full yet is UNREAD, never a verdict. An UNREAD row
+means the classification isn't finished.
+
 ### 6. Apply
 
+- Look for the one change behind several verdicts before editing test by
+  test: a table test that absorbs a dozen near-copies, a shared fixture, a
+  boundary test that replaces a whole mocked layer.
 - Delete DELETE/FOLD tests, then their now-unused fixtures, helpers and mocks.
 - Delete the test-only production seams they kept alive: exports, getters,
   reset functions, injection parameters, flags, wrappers, and dead production
@@ -448,13 +464,14 @@ It changes whenever the code does, even when behavior didn't.
 These guard real behavior, so the verdict is FIX, not DELETE. A test that only
 passes on rerun is a bug in the test or the code.
 
-- Waits a fixed real-time delay (sleep, timer) instead of awaiting the
-  operation or a signal it emits.
-- Polls state until a deadline instead of awaiting an event.
-- Retries on failure, or raises its timeout, to get green.
-- Lets unhandled network requests through to the real network, or silently
-  answers them. Fake at the network boundary, and make unexpected requests
-  fail the test.
+| Hides the flake by | Fix |
+|---|---|
+| Waiting a fixed real-time delay (sleep, timer) | Await the operation, or a promise or signal its handler resolves. To move time, control the clock (fake timers) and advance it |
+| Polling state until a deadline | Have the code that records the event resolve a signal, and await it. A deadline-bound poll fails under load |
+| Retrying on failure | Find the race and await what the test depends on. If it can't be fixed now, record it where the repo tracks flaky tests; don't retry it |
+| Raising its timeout | Await the real event, or move slow shared setup to suite-level setup |
+| Letting network requests through, or answering them silently | Fake at the network boundary with a handler for every request the test makes, and make any other request fail the test |
+| Being disabled or skipped on every run | Fix it and re-enable it, or delete it. A disabled test costs build time and proves nothing |
 
 ## Done looks like
 
@@ -462,6 +479,6 @@ passes on rerun is a bug in the test or the code.
   regression and only on it.
 - No test asserts code that no longer exists.
 - No two tests guard the same behavior.
-- No test sleeps, retries or raises a timeout to pass.
+- No test sleeps, retries, raises a timeout or stays disabled to pass.
 - No production code exists only for tests.
 - Every area has a spec, and `AGENTS.md` tells the next agent how to use it.

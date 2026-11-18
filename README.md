@@ -41,13 +41,13 @@ With no argument it works on the whole repo, one area at a time. Codex uses `$te
 |---|---|---|
 | **Gate** | Automatically, whenever the agent writes, changes or reviews a test | Asks which rule the test guards, what regression makes it fail and why existing coverage misses it, and rejects it if it matches a junk pattern. Never deletes anything. |
 | **Pass** | You run `/testectomy [path]` | Specs, a verdict for every test, deletions, gaps filled, bite checks, report |
-| **Campaign** | You ask to prune a whole subsystem in a large repo | The pass split into lanes, with a written ledger per lane, a layer plan, and an independent review that hunts for contracts that lost their only proof ([`CAMPAIGN.md`](skills/testectomy/CAMPAIGN.md)) |
+| **Campaign** | You ask to prune a whole subsystem in a large repo | The pass split into lanes, with a written ledger per chunk of tests, a layer plan, and an independent review that hunts for contracts that lost their only proof ([`CAMPAIGN.md`](skills/testectomy/CAMPAIGN.md)) |
 
 The gate loads on its own. Deleting tests only happens when you ask for a pass or a campaign.
 
-[![How testectomy works in four steps: write down the intent in SPEC.md, keep only tests a reader can't replace, turn code-vs-intent disagreements into known bugs, and prove every kept test can fail](assets/demo.gif)](assets/video/testectomy-launch.mp4)
+[![How testectomy works in four steps: write down the intent in SPEC.md, keep only tests a reader can't replace, turn code-vs-intent disagreements into known bugs, and prove every kept test can fail](assets/demo.gif)](assets/testectomy.mp4)
 
-[Watch it with sound](assets/video/testectomy-launch.mp4).
+[Watch it with sound](assets/testectomy.mp4).
 
 ## For agents
 
@@ -84,7 +84,7 @@ Each existing test then gets one verdict:
 | Verdict | When |
 |---|---|
 | **Keep** | Guards a `test` rule at its public boundary. Renamed with the rule ID. |
-| **Fix** | Guards a rule, but an assertion can't fail (a negative that passes for the wrong reason, a branch production never reaches). Repaired and bite-checked. |
+| **Fix** | Guards a rule, but an assertion can't fail, or the test passes only by sleeping, retrying or a raised timeout. Repaired and bite-checked. |
 | **Convert** | Guards a `test` rule through field-by-field asserts, mocks or private calls, or duplicates a stronger suite. Rewritten as one [expect test](skills/testectomy/expect-tests.md) or merged into the keeper. |
 | **Fold** | A good input/output example for a `read` rule. Moved into the spec's table, then deleted. |
 | **Delete** | Matches a junk pattern and guards no keep-bar rule. Needs one evidence line: what it could detect, and what proof remains. |
@@ -98,7 +98,7 @@ Junk is sorted by what the test depends on, because a test worth keeping depends
 | **The implementation** | Expected value computed by the code under test, restated constants, layout numbers, debug seeds, private call order. |
 | **Another test** | The same contract replayed at another layer with no new failure mode. |
 
-Tests that pass by hiding a flake (fixed sleeps, polling to a deadline, retries, raised timeouts, real network calls) guard real behavior, so they get FIX: await the real signal and fake the network so unexpected requests fail.
+Tests that pass by hiding a flake (fixed sleeps, polling to a deadline, retries, raised timeouts, real network calls) guard real behavior, so they get FIX: await the real signal, control the clock, and fake the network so unexpected requests fail. Tests disabled on every run are fixed and re-enabled, or deleted.
 
 When unsure between keep and delete, it keeps the test and says why. Deletion count is not the goal.
 
@@ -120,7 +120,7 @@ Rule IDs are stable, rule text never names internal functions (a rename can't ma
 
 ### What it writes into AGENTS.md
 
-So the next agent works the same way:
+So the next agent works the same way (abbreviated):
 
 ```markdown
 ## Tests and specs
@@ -129,6 +129,9 @@ So the next agent works the same way:
 - After a change, check every rule your diff touches. Run only the tests that
   cite those rule IDs (`pytest -k PRICE_3`).
 - A new test needs a `Check: test` rule that meets the keep bar.
+- A bug-fix regression test must fail on the code before the fix.
+- Removing or moving code needs no test that it's gone.
+- No sleeps, retries or raised timeouts in tests.
 - Behavior changes start in the spec: update the rule, then the code.
 - If code and spec disagree, stop and ask. Don't edit the spec to match the code.
 ```
@@ -231,33 +234,16 @@ cp -R testectomy/skills/testectomy ~/.claude/skills/   # or ~/.cursor/skills/, ~
 
 The skill ships no scripts and no file patterns. Tests can be in any language, any folder, with any name, so the agent running the skill finds them the way a new engineer would: the test runner's config, the CI job, the build files that declare test targets, and the runner's own listing command. It writes down what it found and how, then works from that.
 
-## Field notes: a 2,859-test iOS app
-
-The first real campaign ran on a production SwiftUI app (private repo) with 308 XCTest files, a suite that had already been pruned with earlier skills.
-
-| | Before | After |
-|---|---|---|
-| Test cases | 2,859 | 2,568 (all passing) |
-| Test code | 66,246 lines, 319 files | 62,539 lines, 304 files |
-| Permanently skipped tests | 7 | 3 |
-| Specs | none | 8 area specs, 442 rules |
-| Product bugs found | | none; 2 doc drifts, 2 misnamed tests |
-
-24 cheap agents audited it in parallel with a strict brief; the parent reviewed every deletion and overrode 49 of them. Where the junk was: tests of debug-only seed data, layout and motion constants, duplicate layers, and wrapper trivia. Tests named after plan phases turned out to hold real behavior and moved to their owner suites. On a suite that was never pruned, expect a much larger cut. What went wrong during the campaign, and what changed in the skill because of it, is in [docs/field-notes.md](docs/field-notes.md).
-
-## Development
-
-`assets/render.py` regenerates the logo and banner, and `assets/video/render.py` renders the launch video and the GIF from a time-driven HTML timeline in `assets/video/index.html` (needs Python Playwright, Chrome and ffmpeg). Music and sound effects were generated with [ElevenLabs](https://elevenlabs.io).
-
 ## Credits
-
-The "what does this test depend on" framing (the past, nothing, the implementation) and the done checklist come from [prune-tests](https://github.com/caldoai/skills/blob/main/skills/prune-tests/SKILL.md) by Caldo (MIT, notice in [LICENSE](LICENSE)). The flake-masking patterns and the shrink-only ratchet come from [landmines](https://github.com/interfere-inc/landmines) by Interfere.
 
 The idea comes from a November 2026 thread: [Luke Parker](https://x.com/LukeParkerDev) deleted every test in his repo and banned them in AGENTS.md, [Lauren Tan](https://x.com/poteto) replied that she likes expect tests, and the replies pointed out what pure deletion loses: nobody can check the invariants anymore, and refactors lose their safety net. `testectomy` is the middle path.
 
-The gate, the junk patterns, the retention rules and campaign mode are adapted from the [`test-audit`](https://github.com/openclaw/openclaw/blob/main/.agents/skills/test-audit/SKILL.md) skill in [OpenClaw](https://github.com/openclaw/openclaw) (MIT, notice in [LICENSE](LICENSE)), which came out of pruning OpenClaw's own test suites.
+- The gate, the retention rules and campaign mode are adapted from the [`test-audit`](https://github.com/openclaw/openclaw/blob/main/.agents/skills/test-audit/SKILL.md) skill in [OpenClaw](https://github.com/openclaw/openclaw).
+- The "what does this test depend on" framing and the done checklist are adapted from [prune-tests](https://github.com/caldoai/skills/blob/main/skills/prune-tests/SKILL.md) by Caldo, and the git co-change signal from its sibling [untangle-codebase](https://github.com/caldoai/skills/blob/main/skills/untangle-codebase/SKILL.md).
+- The flake patterns, their replacements and the shrink-only ratchet come from [landmines](https://github.com/interfere-inc/landmines) by Interfere.
+- Expect tests follow Jane Street's [`ppx_expect`](https://github.com/janestreet/ppx_expect). Markdown specs follow the line of [Gauge](https://gauge.org), [Cucumber](https://cucumber.io), [specdown](https://github.com/corca-ai/specdown) and [bddfirst](https://github.com/c-k-x/bddfirst), without requiring any of them.
 
-Expect tests follow Jane Street's [`ppx_expect`](https://github.com/janestreet/ppx_expect). Markdown specs follow the line of [Gauge](https://gauge.org), [Cucumber](https://cucumber.io), [specdown](https://github.com/corca-ai/specdown) and [bddfirst](https://github.com/c-k-x/bddfirst), without requiring any of them.
+OpenClaw and Caldo are MIT; their notices are in [LICENSE](LICENSE).
 
 ## Pairs well with
 

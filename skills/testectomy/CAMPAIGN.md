@@ -31,13 +31,27 @@ pass workflow.
 Done when every test file and QA scenario the subsystem owns belongs to exactly
 one lane, and every lane has its spec rules with `Check:` levels.
 
-## 3. Ledger per lane
+## 3. Ledger per chunk
 
-Give each lane to its own read-only agent when you can run agents in parallel.
-The agent reads every assigned test in full, including parameter tables, plus
-the production owners, entry points, callers, history and CI routing. Each
-test declaration goes into a written **ledger** with one verdict from SKILL.md
-(KEEP, FIX, CONVERT, FOLD, DELETE) and one evidence line:
+Split each lane into **chunks** of at most ~3,500 test lines. An auditor given
+a whole 12,000-line lane skims: it judges tests by name and invents rules to
+justify keeping them. Chunk size and brief quality matter more than model size;
+many cheap agents in parallel work well once the brief is strict.
+
+Write one brief file all auditors read, with file paths, not pasted plans:
+
+- the skill files, the repo's `AGENTS.md`, and the intent sources in order;
+- **calibration**: 2-3 verdicts you already settled in this repo by hand (one
+  junk, one misleading name that hides good tests, one clear keep);
+- the evidence rules from SKILL.md (named regression, sourced rule IDs, UNREAD
+  instead of guessing);
+- signals specific to the repo (its debug seeds, its naming habits);
+- the ledger shape, and a final report under 15 lines.
+
+Each auditor reads every assigned test in full, including parameter tables,
+plus the production owners, entry points, callers, history and CI routing, and
+writes its own ledger file. Each test declaration gets one verdict from
+SKILL.md (KEEP, FIX, CONVERT, FOLD, DELETE) and one evidence line:
 
 - KEEP: the rule ID and the bug it catches. A test that only moves to a
   better-named file stays KEEP with the move noted.
@@ -47,7 +61,21 @@ test declaration goes into a written **ledger** with one verdict from SKILL.md
 - FOLD: the `read` rule whose example table takes it.
 - DELETE: the proof that remains, or why no contract exists.
 
-Done when every declaration in the lane has a verdict and an evidence line.
+Pilot the brief on one chunk before launching the rest, then check every
+ledger before trusting it:
+
+- **Spot check:** re-derive ~10 random verdicts against the code. More than 2
+  disagreements and the chunk is redone.
+- **Evidence scan:** count KEEP rows with short or generic evidence (no "fails
+  if"). A high count means missed cuts; give that chunk a second pass.
+- **DELETE review:** read every DELETE yourself, grouped by file. Auditors
+  over-delete in predictable places: telemetry names, date and formatter
+  tables, formally specified areas, and tests their own evidence calls the last
+  proof of a behavior. Overrides go in a review file next to the ledgers, with
+  the reason.
+
+Done when every declaration in the lane has a verdict and an evidence line, and
+the ledger passed the checks above.
 
 ## 4. Layer plan per lane
 
@@ -63,8 +91,41 @@ assertions to carry into keepers, and the test-only production seams unlocked.
 
 ## 5. Cutover
 
-Edit lane by lane. Serialize changes to shared harnesses and support files
-through one owner. With each lane, remove the production seams it unlocks.
+Edit in two passes. Implementing agents don't build or run tests; the parent
+builds once after both passes.
+
+- **Pass A, in parallel, one agent per chunk:** DELETE, FOLD, FIX, and CONVERT
+  when the target is in the same chunk. A CONVERT into another chunk's file
+  stays in place and goes into that agent's own moves file. Never let parallel
+  agents append to one shared file: concurrent writes overwrite each other.
+- **Pass B, one agent alone:** the cross-chunk moves, copying each test into
+  its target before deleting it from the source.
+- Rebuild the move list from the verdicts and the tree after pass A, not from
+  what agents reported: check, test by test, whether it is still in its source,
+  already in its target, or gone.
+- Give brief and output files names that differ by more than case; some file
+  systems treat `MOVES.md` and `moves.md` as one file.
+
+When moving a test, it carries everything it depends on: its `setUp` and
+`tearDown` (or the equivalent fixtures), and the original helpers copied as
+they are. Agents tend to rewrite helpers from memory and drop cleanup; in one
+campaign that produced a helper that crashed on a date it couldn't parse, and
+three moved tests that leaked state (a debug locale, pending deep links) into
+every test after them. After pass B, check each moved test's original class
+for setup and teardown and confirm the target has the same.
+
+When collapsing tests into one table test, keep exactly the original cases.
+New rows are new tests and need a sourced rule; an agent once added time-zone
+rows whose expected values came from nowhere, and they failed.
+
+After both passes, the parent builds and fixes compile errors in a loop with a
+build-only command that reports every error (`build-for-testing`, `tsc
+--noEmit`, `cargo check`), before running any tests. Expect leftovers:
+attributes and annotations orphaned by deleted functions, helpers missing in
+the target, helpers declared on the wrong type.
+
+Serialize changes to shared harnesses and support files through one owner.
+With each lane, remove the production seams it unlocks.
 Register moved suites in CI routing and test inventories, and update
 shrink-only line-cap baselines. Write the test policy into the subsystem's
 `AGENTS.md`, adding ownership rules drawn from mistakes this campaign actually
@@ -82,6 +143,18 @@ nine real gaps and one unreachable assertion.
 
 For each restored rule, bite-check it: one deliberate mutation of the
 production owner turns the keeper red, then restore the source byte for byte.
+Also bite-check every table test created by collapsing. Several independent
+mutations can share one run; confirm each one actually applied (`git diff`)
+before reading the result, since a mutation that didn't apply looks like a
+test that doesn't bite.
+
+A test that fails only in the full run and passes alone on both the branch and
+the base is a pre-existing flaky test, not a regression. Prove it by running it
+alone on both before blaming the campaign, and list it in the report.
+
+Measure time with cold builds on both sides, more than once and in alternating
+order. A single cold build per side varies by tens of seconds, enough to hide
+or invent the effect of a few thousand lines.
 
 Done when every reported gap is restored or rejected with source evidence, and
 every restored rule has a caught mutation.

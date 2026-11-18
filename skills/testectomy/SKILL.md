@@ -97,7 +97,9 @@ boundary test). If they still want it, write it: it's their repo.
   overlapping tests, CI routing and relevant history. When a test claims
   dependency-backed behavior, read the dependency's source or types.
 - **Judge a test by its assertions, not its name.** A test named "clears the
-  window" may assert the window was *not* cleared.
+  window" may assert the window was *not* cleared. Files named after a plan
+  phase, PR, audit or fix batch (`Phase7`, `Leftover`, `Fixes`) often hold real
+  behavior: judge each test, and CONVERT good ones into their owner suite.
 - **Static or slow is not a deletion reason.** A test that looks like
   implementation may still be the only guard of a contract. Prove otherwise
   before removing it.
@@ -127,26 +129,47 @@ Copy this checklist and track it:
 ### 1. Baseline
 
 Read the root and scoped `AGENTS.md`/`CLAUDE.md`, the CI config and the
-package scripts. Take the test, format and changed-files commands from there.
-Run the full suite once and record: pass/fail counts, wall time, flaky tests,
-test and production line counts. A red baseline is a finding: a failing test
-may be a real product bug. Reproduce it and report it; don't delete your way to
-green.
+package scripts. Take the test, format and changed-files commands from there,
+and obey any rules the repo sets for agents and test runs (how many agents,
+which model, how often the full suite may run).
+
+Run the full suite once and record: pass, fail and skip counts, wall time,
+flaky tests, test and production line counts. Then check the numbers make
+sense:
+
+- **Zero or suspiciously few cases is a failed baseline**, even with exit code
+  0. Test scripts can silently match no device, target or file.
+- **Split build time from run time.** In compiled languages most of the wall
+  time is often compiling test code. Report both, and don't promise faster runs
+  from cutting tests that already run in milliseconds.
+- **Tests skipped on every run** are a finding of their own: they cost build
+  time and prove nothing.
+- **A red baseline** is a finding: a failing test may be a real product bug.
+  Reproduce it and report it; don't delete your way to green.
 
 Never edit source or tests while a test watcher is running in the checkout.
 
 ### 2. Inventory
 
-```bash
-bash scripts/inventory.sh [repo-root]   # from this skill's folder
-```
+Find the tests yourself; no fixed pattern works across stacks. Tests can be
+in any language, any folder, with any name. Use what the repo already says:
 
-It prints every test file with its line count and approximate number of cases,
-grouped by directory. Then choose the areas from the production code, not from
-the test layout: an area is one cohesive behavior (pricing, payments, auth).
-Several areas can share one `SPEC.md` with different ID prefixes when they
-live in the same module. On large repos, run one area per pass and land each
-separately, or switch to [campaign mode](CAMPAIGN.md).
+- The test runner's config and the CI job: which targets, packages, globs or
+  plans they run.
+- Build files that declare test targets (an Xcode test plan, `Cargo.toml`,
+  `package.json`, `pyproject.toml`, Gradle, Bazel).
+- The runner's own listing, when it has one (`--collect-only`, `--list`,
+  `-list-tests`, a dry run). It counts cases more reliably than reading files.
+- Then read the tree to confirm. Exclude vendored and generated code.
+
+Write down what you found and how: test locations, number of files, lines and
+cases, and the command that lists them. Then choose the areas from the
+production code, not from the test layout: an area is one cohesive behavior
+(pricing, payments, auth). When most tests sit in one folder, group them by
+the production owner they exercise. Several areas can share one `SPEC.md`
+with different ID prefixes when they live in the same module. On large repos,
+run one area per pass and land each separately, or switch to
+[campaign mode](CAMPAIGN.md).
 
 ### 3. Gather intent
 
@@ -167,7 +190,9 @@ reading, put the question under `## Open questions`, and list it in the report.
 ### 4. Write SPEC.md per area
 
 Put it next to the code it governs (`src/billing/SPEC.md`), unless the repo
-already has a `specs/` convention. Follow [spec-format.md](spec-format.md).
+already has a `specs/` convention. When the code is organized by layer
+(models, services, views) instead of by feature, use one `specs/<area>.md` per
+area at the app root. Follow [spec-format.md](spec-format.md).
 Every rule gets an ID (`BILL-3`) and a `Check:` level:
 
 - `type`: the type system or a schema already enforces it.
@@ -192,7 +217,11 @@ unless its rows need different verdicts.
 
 Every DELETE needs one evidence line: what failure the test could actually
 detect, and the stronger proof that remains (or why no contract exists). A
-missing line means it isn't ready to delete.
+missing line means it isn't ready to delete. Evidence that says no other proof
+remains contradicts a DELETE: that test is KEEP or FIX. KEEP evidence names the
+regression ("fails if reconcile overwrites member notes"); a label ("mirror
+sync") isn't evidence. A rule ID is valid only with a source other than the
+code: never invent one to justify a verdict.
 
 Test names carry the rule ID in a form the runner accepts and can filter on:
 `"BILL-3: …"` with `-t BILL-3` (Vitest, Jest, Bun), `test_BILL_3_…` with
@@ -313,7 +342,9 @@ next to the rule.
    the test if the failure can plausibly come back.
 6. **Public contract others depend on**: a library API, CLI output, plugin SDK,
    protocol, config format, defaults, prompt bytes, generated cross-language
-   code, package or release contents, an architecture boundary.
+   code, package or release contents, an architecture boundary, analytics or
+   telemetry event names and parameters that dashboards read. Many wire-format
+   snapshots of one contract collapse into one table test.
 
 A source-inspection test (grepping a file) passes only when it's the cheapest
 independent guard: it fails when the contract changes (the user-facing key,
@@ -351,3 +382,12 @@ unless the keep bar names the contract it guards.
 - Getters, setters, constructors, framework behavior, language features.
 - A large snapshot nobody reviews, updated blindly with `-u`.
 - A name or fixture that promises more than the input exercises.
+- Asserts the contents of debug-only seeds, preview data, demo fixtures or
+  debug menus that ship to no user.
+- Asserts layout and motion numbers (point sizes, paddings, opacities, angles,
+  durations) that restate constants, unless the number is a documented
+  accessibility minimum.
+- Asserts a presentation is empty or nil for UI that was removed: delete it with
+  the dead code path.
+- An opt-in harness (screenshots, galleries, renders behind an env flag) that
+  is skipped on every normal run: move it to a script or delete it.

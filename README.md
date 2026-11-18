@@ -53,7 +53,7 @@ The gate loads on its own. Deleting tests only happens when you ask for a pass o
 
 If a user sent you this repo and said "use this":
 
-1. **Install the skill**, unless `testectomy` is already in your skills folder: `npx skills add felipebasurto/testectomy -g` (drop `-g` for the current project only). Needs `bash` and `rg` (ripgrep).
+1. **Install the skill**, unless `testectomy` is already in your skills folder: `npx skills add felipebasurto/testectomy -g` (drop `-g` for the current project only).
 2. **Pick the scope.** The path the user named, or the whole repo. On large repos, do one area per pass.
 3. **Run the skill.** Invoke `testectomy`, or open [`skills/testectomy/SKILL.md`](skills/testectomy/SKILL.md) and follow its nine steps by hand: baseline, inventory, intent, specs, classify, apply, bite-check, AGENTS.md, report.
 4. **Don't commit** unless the user asked. End with the report the skill defines, including **Bugs** and **Open questions**: those need a human.
@@ -218,23 +218,25 @@ cp -R testectomy/skills/testectomy ~/.claude/skills/   # or ~/.cursor/skills/, ~
 | Gemini CLI | "use the testectomy skill" |
 | Any other agent | "Follow `skills/testectomy/SKILL.md` on this repo" |
 
-## The inventory script
+## Any stack
 
-`scripts/inventory.sh` lists every test file with its line count and approximate number of cases, grouped by directory, so the agent can plan before reading a single test:
+The skill ships no scripts and no file patterns. Tests can be in any language, any folder, with any name, so the agent running the skill finds them the way a new engineer would: the test runner's config, the CI job, the build files that declare test targets, and the runner's own listing command. It writes down what it found and how, then works from that.
 
-```bash
-bash skills/testectomy/scripts/inventory.sh path/to/repo
-```
+## Field notes: a 2,859-test iOS app
 
-It recognizes Vitest, Jest, Bun, pytest, Go, Rust, JUnit, Kotlin, Swift, RSpec and Gherkin layouts, skips data files that look like tests, snapshots and vendored code, and ends with a total.
+The first real campaign ran on a production SwiftUI app (private repo) with 308 XCTest files, a suite that had already been pruned with earlier skills.
+
+| | Before | After |
+|---|---|---|
+| Test cases | 2,859 | 2,568 (all passing) |
+| Test code | 66,246 lines, 319 files | 62,539 lines, 304 files |
+| Permanently skipped tests | 7 | 3 |
+| Specs | none | 8 area specs, 442 rules |
+| Product bugs found | | none; 2 doc drifts, 2 misnamed tests |
+
+24 cheap agents audited it in parallel with a strict brief; the parent reviewed every deletion and overrode 49 of them. Where the junk was: tests of debug-only seed data, layout and motion constants, duplicate layers, and wrapper trivia. Tests named after plan phases turned out to hold real behavior and moved to their owner suites. On a suite that was never pruned, expect a much larger cut. What went wrong during the campaign, and what changed in the skill because of it, is in [docs/field-notes.md](docs/field-notes.md).
 
 ## Development
-
-This repo follows its own rule. The script has a [`SPEC.md`](SPEC.md) with five rules, three of them `test`, and [one test](tests/test_inventory.py) that guards those three: two of them are regressions that actually happened while building it.
-
-```bash
-python3 -m unittest discover -s tests
-```
 
 `assets/render.py` regenerates the logo and banner, and `assets/video/render.py` renders the launch video and the GIF from a time-driven HTML timeline in `assets/video/index.html` (needs Python Playwright, Chrome and ffmpeg). Music and sound effects were generated with [ElevenLabs](https://elevenlabs.io).
 

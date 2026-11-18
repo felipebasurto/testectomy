@@ -10,7 +10,7 @@ import argparse
 import pathlib
 import subprocess
 import tempfile
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 
 from playwright.sync_api import sync_playwright
 
@@ -41,21 +41,22 @@ def open_page(browser):
     return page
 
 
+def render_chunk(args):
+    frames_dir, indices = args
+    with sync_playwright() as p:
+        browser = p.chromium.launch(channel="chrome")
+        page = open_page(browser)
+        for i in indices:
+            page.evaluate(f"seek({i / FPS})")
+            page.screenshot(path=pathlib.Path(frames_dir) / f"{i:05d}.png")
+        browser.close()
+
+
 def render_frames(frames_dir, total):
     count = int(total * FPS)
-    chunks = [range(i, count, WORKERS) for i in range(WORKERS)]
-
-    def work(indices):
-        with sync_playwright() as p:
-            browser = p.chromium.launch(channel="chrome")
-            page = open_page(browser)
-            for i in indices:
-                page.evaluate(f"seek({i / FPS})")
-                page.screenshot(path=frames_dir / f"{i:05d}.png")
-            browser.close()
-
-    with ThreadPoolExecutor(WORKERS) as pool:
-        list(pool.map(work, chunks))
+    chunks = [(str(frames_dir), list(range(i, count, WORKERS))) for i in range(WORKERS)]
+    with ProcessPoolExecutor(WORKERS) as pool:
+        list(pool.map(render_chunk, chunks))
     return count
 
 
@@ -79,6 +80,7 @@ def mix_audio(cues, total, out):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--stills", nargs="*", type=float)
+    ap.add_argument("--frames", help="reuse PNG frames already rendered in this folder")
     args = ap.parse_args()
 
     if args.stills:
@@ -101,9 +103,12 @@ def main():
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
-        frames = tmp / "frames"
-        frames.mkdir()
-        render_frames(frames, total)
+        if args.frames:
+            frames = pathlib.Path(args.frames)
+        else:
+            frames = tmp / "frames"
+            frames.mkdir()
+            render_frames(frames, total)
         mix_audio(cues, total, tmp / "mix.wav")
 
         mp4 = HERE / "testectomy-launch.mp4"

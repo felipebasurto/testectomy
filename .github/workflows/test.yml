@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ${{ matrix.os }}
@@ -16,6 +19,138 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
+      - name: Validate skill, plugin manifests, links and triggers
+        run: |
+          python3 - <<'PY'
+          import json
+          import pathlib
+          import re
+          import subprocess
+          import sys
+
+          root = pathlib.Path(".")
+          errors = []
+
+          # 1. Agent Skills spec checks on skills/testectomy/SKILL.md
+          skill_dir = root / "skills" / "testectomy"
+          skill_md = skill_dir / "SKILL.md"
+          text = skill_md.read_text(encoding="utf-8")
+          m = re.match(r"^---\n(.*?)\n---\n(.*)$", text, re.S)
+          fm, meta = {}, {}
+          if not m:
+              errors.append("SKILL.md missing YAML frontmatter")
+          else:
+              allowed_keys = {"name", "description", "license", "compatibility", "metadata", "allowed-tools"}
+              cur_key = None
+              for line in m.group(1).splitlines():
+                  if not line.strip():
+                      continue
+                  if line.startswith((" ", "\t")):
+                      if cur_key == "metadata" and ":" in line:
+                          mk, mv = line.split(":", 1)
+                          meta[mk.strip()] = mv.strip().strip('"').strip("'")
+                      elif cur_key == "description":
+                          fm["description"] = (fm.get("description", "") + " " + line.strip()).strip()
+                      continue
+                  if ":" not in line:
+                      errors.append(f"Invalid frontmatter line: {line!r}")
+                      continue
+                  k, v = line.split(":", 1)
+                  k, v = k.strip(), v.strip()
+                  if k not in allowed_keys:
+                      errors.append(f"Non-standard Agent Skills frontmatter key: {k}")
+                  cur_key = k
+                  if v in (">-", ">", "|-", "|"):
+                      fm[k] = ""
+                  else:
+                      fm[k] = v.strip('"').strip("'")
+              name = fm.get("name", "")
+              if name != skill_dir.name:
+                  errors.append(f"SKILL.md name {name!r} != directory name {skill_dir.name!r}")
+              if not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", name) or len(name) > 64:
+                  errors.append(f"Invalid skill name: {name!r}")
+              desc = fm.get("description", "")
+              if not desc or len(desc) > 1024:
+                  errors.append(f"SKILL.md description length invalid: {len(desc)}")
+              if len(text.splitlines()) > 500:
+                  errors.append(f"SKILL.md too long: {len(text.splitlines())} lines (> 500)")
+
+          # 2. Plugin & extension manifests + version sync
+          ap = json.loads((root / "plugin.json").read_text(encoding="utf-8"))
+          cp = json.loads((root / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+          mp = json.loads((root / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
+          cur = json.loads((root / ".cursor-plugin" / "plugin.json").read_text(encoding="utf-8"))
+          gem = json.loads((root / "gemini-extension.json").read_text(encoding="utf-8"))
+
+          ap_allowed = {"$schema", "name", "version", "description", "author", "homepage", "repository", "license", "keywords", "extensions"}
+          if ap.get("$schema") != "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json" or not set(ap).issubset(ap_allowed):
+              errors.append(f"root plugin.json schema mismatch: {sorted(ap)}")
+          versions = {
+              "SKILL.md": meta.get("version"),
+              "plugin.json": ap.get("version"),
+              ".claude-plugin/plugin.json": cp.get("version"),
+              ".cursor-plugin/plugin.json": cur.get("version"),
+              "gemini-extension.json": gem.get("version"),
+          }
+          if len(set(versions.values())) != 1 or not re.fullmatch(r"\d+\.\d+\.\d+(?:[-+].+)?", str(cp.get("version", ""))):
+              errors.append(f"Version mismatch across manifests: {versions}")
+          if cp.get("name") not in [p.get("name") for p in mp.get("plugins", [])]:
+              errors.append("plugin.json name missing from marketplace.json")
+          if cp.get("icon") and not (root / cp["icon"]).is_file():
+              errors.append(f"Missing Claude plugin icon: {cp['icon']}")
+          cur_allowed = {"name", "description", "version", "author", "homepage", "repository", "license", "keywords", "logo", "rules", "agents", "skills", "commands", "hooks", "mcpServers", "variables"}
+          if not set(cur).issubset(cur_allowed):
+              errors.append(f"Unknown fields in .cursor-plugin/plugin.json: {sorted(set(cur) - cur_allowed)}")
+          if not (root / cur.get("logo", "")).is_file() or not (root / cur.get("skills", "")).is_dir():
+              errors.append(".cursor-plugin/plugin.json logo or skills path missing")
+
+          # 3. OpenAI Codex agents/openai.yaml
+          oai = (skill_dir / "agents" / "openai.yaml").read_text(encoding="utf-8")
+          sd_m = re.search(r'^\s*short_description:\s*"([^"]+)"\s*$', oai, re.M)
+          dp_m = re.search(r'^\s*default_prompt:\s*"([^"]+)"\s*$', oai, re.M)
+          if not sd_m or not (25 <= len(sd_m.group(1)) <= 64):
+              errors.append(f"openai.yaml short_description length must be 25-64 (got {len(sd_m.group(1)) if sd_m else 0})")
+          if not dp_m or "$testectomy" not in dp_m.group(1):
+              errors.append("openai.yaml default_prompt must mention $testectomy")
+
+          # 4. Triggers & all JSON files
+          triggers = json.loads((root / "evals" / "triggers.json").read_text(encoding="utf-8"))
+          seen_ids = set()
+          for c in triggers:
+              cid = c.get("id")
+              if not cid or cid in seen_ids or not isinstance(c.get("query"), str) or not isinstance(c.get("should_trigger"), bool):
+                  errors.append(f"Invalid trigger case: {c!r}")
+              seen_ids.add(cid)
+          if sum(1 for c in triggers if c.get("should_trigger")) < 3 or sum(1 for c in triggers if not c.get("should_trigger")) < 3:
+              errors.append("evals/triggers.json needs at least 3 positive and 3 negative cases")
+
+          # 5. Local markdown links & image srcs
+          for mf in [root / "README.md", *sorted(skill_dir.glob("*.md"))]:
+              content = mf.read_text(encoding="utf-8")
+              for match in re.finditer(r"!?\[[^\]]*\]\(([^)]+)\)", content):
+                  href = match.group(1).split("#", 1)[0]
+                  if not href or href.startswith(("http://", "https://")):
+                      continue
+                  if not (mf.parent / href).resolve().exists():
+                      errors.append(f"Broken link in {mf}: {href}")
+              for match in re.finditer(r'src="([^"]+)"', content):
+                  href = match.group(1)
+                  if href.startswith(("http://", "https://")):
+                      continue
+                  if not (mf.parent / href).resolve().exists():
+                      errors.append(f"Broken image src in {mf}: {href}")
+
+          # 6. No OS metadata files tracked in git
+          for path in subprocess.check_output(["git", "ls-files"], text=True).splitlines():
+              if pathlib.Path(path).name in {".DS_Store", "Thumbs.db", "desktop.ini"}:
+                  errors.append(f"Tracked OS metadata file: {path}")
+
+          if errors:
+              for e in errors:
+                  print("ERROR:", e, file=sys.stderr)
+              sys.exit(1)
+          print(f"OK: manifests, openai.yaml, {len(triggers)} triggers and local links valid.")
+          PY
       - name: Example suites (before and after)
         run: |
           pip install pytest

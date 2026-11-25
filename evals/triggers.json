@@ -1,0 +1,72 @@
+[
+  {
+    "id": "explicit-audit-en",
+    "query": "Audit and prune the test suite in src/billing, move intent into SPEC.md and cut tests that just mock internals.",
+    "should_trigger": true
+  },
+  {
+    "id": "explicit-prune-es",
+    "query": "Limpia nuestra suite de tests en packages/payments, tarda 12 minutos y casi todo testea mocks.",
+    "should_trigger": true
+  },
+  {
+    "id": "gate-new-test",
+    "query": "Write unit tests for the new coupon calculation logic in src/pricing.ts.",
+    "should_trigger": true
+  },
+  {
+    "id": "gate-review-tests",
+    "query": "Review the tests in this PR and flag any flaky sleeps, retries or tests that just restate constants.",
+    "should_trigger": true
+  },
+  {
+    "id": "campaign-subsystem",
+    "query": "Run a full test pruning campaign across the entire checkout subsystem.",
+    "should_trigger": true
+  },
+  {
+    "id": "markdown-specs",
+    "query": "Replace our brittle field-by-field assertions with Markdown specs and expect tests.",
+    "should_trigger": true
+  },
+  {
+    "id": "invoke-by-name",
+    "query": "Run testectomy on this repo.",
+    "should_trigger": true
+  },
+  {
+    "id": "near-miss-feature-impl",
+    "query": "Add support for percentage coupons in src/pricing.py and update the checkout endpoint.",
+    "should_trigger": false
+  },
+  {
+    "id": "near-miss-ui-copy",
+    "query": "Clean up the AI-generated eyebrow labels and filler copy in src/pages/Billing.tsx.",
+    "should_trigger": false
+  },
+  {
+    "id": "near-miss-agent-dogmas",
+    "query": "Audit my ~/.claude/CLAUDE.md and memory files for old rules that ban Opus.",
+    "should_trigger": false
+  },
+  {
+    "id": "near-miss-ci-cache",
+    "query": "Speed up our GitHub Actions workflow by caching pip and node_modules.",
+    "should_trigger": false
+  },
+  {
+    "id": "near-miss-db-migration",
+    "query": "Write a Postgres migration to add a unique index on orders.idempotency_key.",
+    "should_trigger": false
+  },
+  {
+    "id": "near-miss-readme-docs",
+    "query": "Update the README installation instructions with the new CLI flags.",
+    "should_trigger": false
+  },
+  {
+    "id": "near-miss-css-layout",
+    "query": "Fix the responsive grid wrapping on the pricing cards on mobile screens.",
+    "should_trigger": false
+  }
+]

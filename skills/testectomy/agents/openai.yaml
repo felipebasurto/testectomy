@@ -1,6 +1,7 @@
 interface:
   display_name: "Testectomy"
   short_description: "Gate new tests, cut the suite to what matters, specs in SPEC.md"
-  default_prompt: "Run testectomy on this repo"
+  default_prompt: "Run $testectomy on this repo to audit and prune low-value tests."
+
 policy:
   allow_implicit_invocation: true

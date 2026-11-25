@@ -1,5 +1,5 @@
 {
   "name": "testectomy",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "One skill for tests: gate new ones at write time, cut the suite down to the ones that matter, move intent into SPEC.md."
 }

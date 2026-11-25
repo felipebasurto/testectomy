@@ -1,6 +1,6 @@
 {
   "name": "testectomy",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "One skill for tests. Gates every new test at write time, and on request cuts a suite down to the tests that matter: intent moves into SPEC.md files, only boundary, money, concurrency, parser, regression and public-contract tests survive, test-only production seams go, and bugs the green suite was hiding get reported.",
   "author": {
     "name": "Felipe Basurto"
@@ -8,6 +8,7 @@
   "homepage": "https://github.com/felipebasurto/testectomy",
   "repository": "https://github.com/felipebasurto/testectomy",
   "license": "MIT",
+  "icon": "./assets/logo.png",
   "keywords": [
     "testing",
     "tests",

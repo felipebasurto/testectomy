@@ -11,6 +11,9 @@ description: >-
   hiding. Use when writing, changing, reviewing or deleting tests, and when the
   user asks for a test audit, test cleanup, test pruning, spec tests, Markdown
   specs, a subsystem test campaign, or to reduce test time and token cost.
+license: MIT
+metadata:
+  version: "1.4.1"
 ---
 
 # Testectomy
